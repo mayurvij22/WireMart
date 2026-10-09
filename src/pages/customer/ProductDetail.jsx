@@ -34,9 +34,9 @@ export default function ProductDetail() {
   if (product === undefined) return <Spinner />;
   if (product === null) {
     return (
-      <div className="empty">
-        <p>This product is no longer available.</p>
-        <Link to="/" className="btn btn-primary">
+      <div className="py-20 text-center">
+        <p className="text-gray-600">This product is no longer available.</p>
+        <Link to="/" className="mt-4 inline-block rounded-lg bg-ink px-6 py-3 font-semibold text-white no-underline">
           Browse products
         </Link>
       </div>
@@ -46,48 +46,70 @@ export default function ProductDetail() {
   const category = byId[product.category];
 
   return (
-    <article className="detail">
-      <button type="button" className="btn btn-ghost back" onClick={goBack}>
-        ← Back
-      </button>
-
-      <div className="detail-media">
-        <ProductImage src={product.imageUrl} alt={product.name} className="detail-img" />
-      </div>
-
-      <div className="detail-body">
+    <article className="pb-24 lg:pb-0">
+      <nav className="mb-6 flex items-center gap-2 text-sm text-gray-500">
+        <button type="button" onClick={goBack} className="cursor-pointer border-0 bg-transparent p-0 font-semibold text-ink hover:underline">
+          ← Back
+        </button>
         {category && (
-          <Link to={`/?cat=${category.id}`} className="detail-category">
-            {category.name}
-          </Link>
+          <>
+            <span aria-hidden="true">/</span>
+            <Link to={`/?cat=${category.id}`} className="text-gray-500 no-underline hover:text-ink hover:underline">
+              {category.name}
+            </Link>
+          </>
         )}
-        <h1 className="detail-title">{product.name}</h1>
-        <div className="detail-price">{formatPrice(product.price)}</div>
-        <StockBadge inStock={product.inStock} />
+      </nav>
 
-        {/* Phones: fixed bar at the bottom. Computers: shown here beside the photo. */}
-        <div className="buy-bar">
-          <div className="buy-bar-price">{formatPrice(product.price)}</div>
-          <BuyButton product={product} className="btn-large" />
+      <div className="grid items-start gap-8 lg:grid-cols-2 lg:gap-14">
+        <div className="overflow-hidden rounded-2xl bg-gray-50 lg:sticky lg:top-28">
+          <ProductImage
+            src={product.imageUrl}
+            alt={product.name}
+            className="aspect-square max-h-[560px] w-full object-contain p-6 text-6xl"
+          />
         </div>
 
-        {product.features.length > 0 && (
-          <section>
-            <h2 className="section-title">Features</h2>
-            <ul className="feature-list">
-              {product.features.map((f, i) => (
-                <li key={i}>{f}</li>
-              ))}
-            </ul>
-          </section>
-        )}
+        <div className="flex flex-col">
+          <h1 className="m-0 text-2xl font-bold leading-tight tracking-tight sm:text-3xl">{product.name}</h1>
+          <div className="mt-3 flex items-center gap-3">
+            <span className="text-3xl font-bold">{formatPrice(product.price)}</span>
+            <StockBadge inStock={product.inStock} />
+          </div>
 
-        {product.description && (
-          <section>
-            <h2 className="section-title">Description</h2>
-            <p className="detail-desc">{product.description}</p>
-          </section>
-        )}
+          {/* Phones: fixed bar at the bottom. Computers: shown here beside the photo. */}
+          <div className="fixed inset-x-0 bottom-0 z-20 flex items-center gap-4 border-t border-gray-200 bg-white px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] lg:static lg:mt-6 lg:border-0 lg:p-0">
+            <span className="text-xl font-bold whitespace-nowrap lg:hidden">{formatPrice(product.price)}</span>
+            <BuyButton product={product} className="h-12 flex-1 text-base lg:max-w-xs" />
+          </div>
+
+          {product.features.length > 0 && (
+            <section className="mt-8 rounded-2xl border border-gray-200 p-5">
+              <h2 className="m-0 mb-3 text-lg font-bold">Features</h2>
+              <ul className="m-0 list-none space-y-2 p-0">
+                {product.features.map((f, i) => (
+                  <li key={i} className="flex gap-2 text-[15px] text-gray-700">
+                    <span aria-hidden="true" className="text-buy">
+                      ✓
+                    </span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {product.description && (
+            <section className="mt-6">
+              <h2 className="m-0 mb-2 text-lg font-bold">Description</h2>
+              <p className="m-0 whitespace-pre-line text-[15px] leading-relaxed text-gray-700">{product.description}</p>
+            </section>
+          )}
+
+          <p className="mt-8 rounded-xl bg-accent-soft px-4 py-3 text-sm text-ink">
+            💬 Tap <strong>{product.inStock ? 'Buy Now' : 'Ask on WhatsApp'}</strong> — your order message is filled in for you.
+          </p>
+        </div>
       </div>
     </article>
   );

@@ -1,9 +1,57 @@
 import { useSearchParams } from 'react-router-dom';
 import { useCategories } from '../../hooks/useCategories';
 import { useProductList } from '../../hooks/useProductList';
-import SearchBar from '../../components/SearchBar';
 import ProductCard from '../../components/ProductCard';
 import { ErrorBox, Spinner } from '../../components/Status';
+import { WhatsAppIcon } from '../../components/BuyButton';
+import { categoryIcon } from '../../lib/categoryIcon';
+import { WHATSAPP_NUMBER } from '../../config';
+
+const COLLAGE = [
+  { icon: '💡', bg: 'bg-amber-100', span: 'row-span-2' },
+  { icon: '🔌', bg: 'bg-violet-100', span: '' },
+  { icon: '🚰', bg: 'bg-sky-100', span: '' },
+  { icon: '🔧', bg: 'bg-emerald-100', span: 'col-span-2' },
+];
+
+const HIGHLIGHTS = [
+  ['🏷️', 'Genuine brands'],
+  ['💬', 'Order on WhatsApp'],
+  ['🚚', 'Local delivery'],
+];
+
+function CategoryTile({ category, onClick }) {
+  const icon = categoryIcon(category.name);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex cursor-pointer flex-col items-center gap-2 rounded-xl border-0 bg-transparent p-1 text-center"
+    >
+      <span
+        aria-hidden="true"
+        className="grid aspect-square w-full max-w-24 place-items-center rounded-xl bg-gray-100 text-3xl font-extrabold text-gray-700 transition group-hover:bg-gray-200"
+      >
+        {icon || category.name.charAt(0).toUpperCase()}
+      </span>
+      <span className="line-clamp-2 text-xs font-medium text-ink sm:text-sm">{category.name}</span>
+    </button>
+  );
+}
+
+function Pill({ active, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`h-9 flex-none cursor-pointer whitespace-nowrap rounded-full border px-4 text-sm font-semibold transition ${
+        active ? 'border-ink bg-ink text-white' : 'border-gray-300 bg-white text-ink hover:border-ink'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
 
 export default function Home() {
   const [params, setParams] = useSearchParams();
@@ -26,117 +74,130 @@ export default function Home() {
     ? `Results for “${q}”${cat && byId[cat] ? ` in ${byId[cat].name}` : ''}`
     : cat
       ? byId[cat]?.name || 'Category'
-      : 'All Products';
+      : 'All products';
 
   return (
-    <div className="shop-layout">
-      {/* Computer: category list on the left. Hidden on phones (they use tiles/chips). */}
-      <aside className="shop-sidebar" aria-label="Categories">
-        <h2 className="sidebar-title">Categories</h2>
-        <nav className="sidebar-list">
-          <button type="button" className={`sidebar-item ${!cat ? 'active' : ''}`} onClick={() => update({ cat: '' }, false)}>
-            All Products
-          </button>
-          {categories.map((c) => (
-            <button
-              type="button"
-              key={c.id}
-              className={`sidebar-item ${cat === c.id ? 'active' : ''}`}
-              onClick={() => update({ cat: c.id }, false)}
-            >
-              {c.name}
-            </button>
-          ))}
-        </nav>
-        {catLoading && categories.length === 0 && <Spinner />}
-      </aside>
+    <>
+      {browsing && (
+        <section className="grid items-center gap-10 pb-12 lg:grid-cols-2 lg:gap-16 lg:pt-6">
+          <div>
+            <h1 className="m-0 text-3xl font-bold leading-tight tracking-tight sm:text-4xl lg:text-[44px]">
+              Electrical &amp; plumbing supplies for every job
+            </h1>
 
-      <div className="shop-main">
-        <div className="sticky-tools">
-          <SearchBar value={q} onChange={(v) => update({ q: v })} />
-          {!browsing && categories.length > 0 && (
-            <nav className="chips" aria-label="Categories">
-              <button type="button" className={`chip ${!cat ? 'active' : ''}`} onClick={() => update({ cat: '' })}>
-                All
-              </button>
-              {categories.map((c) => (
-                <button
-                  type="button"
-                  key={c.id}
-                  className={`chip ${cat === c.id ? 'active' : ''}`}
-                  onClick={() => update({ cat: c.id })}
-                >
-                  {c.name}
-                </button>
+            <div className="mt-8 rounded-2xl border border-gray-200 p-5 sm:p-6">
+              <h2 className="m-0 mb-5 text-lg font-semibold text-gray-600">What are you looking for?</h2>
+              {catLoading && categories.length === 0 && <Spinner />}
+              <ErrorBox error={catError} onRetry={() => refresh(true)} />
+              <div className="grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4">
+                {categories.map((c) => (
+                  <CategoryTile key={c.id} category={c} onClick={() => update({ cat: c.id }, false)} />
+                ))}
+              </div>
+            </div>
+
+            <ul className="m-0 mt-8 flex list-none flex-wrap gap-x-8 gap-y-3 p-0">
+              {HIGHLIGHTS.map(([icon, label]) => (
+                <li key={label} className="flex items-center gap-2 text-sm font-semibold">
+                  <span aria-hidden="true" className="text-xl">
+                    {icon}
+                  </span>
+                  {label}
+                </li>
               ))}
-            </nav>
+            </ul>
+          </div>
+
+          <div aria-hidden="true" className="hidden h-[520px] grid-cols-2 grid-rows-3 gap-3 lg:grid">
+            {COLLAGE.map((tile) => (
+              <div key={tile.icon} className={`grid place-items-center rounded-2xl text-7xl ${tile.bg} ${tile.span}`}>
+                {tile.icon}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {browsing && (
+        <a
+          href={`https://wa.me/${WHATSAPP_NUMBER}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mb-12 flex items-center justify-between gap-4 rounded-2xl bg-ink px-6 py-7 text-white no-underline sm:px-10"
+        >
+          <div>
+            <p className="m-0 text-xs font-semibold uppercase tracking-widest text-white/60">Can’t find it?</p>
+            <p className="m-0 mt-1 text-xl font-bold sm:text-2xl">Send us a photo on WhatsApp — we’ll find it for you.</p>
+          </div>
+          <span className="hidden flex-none items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-ink sm:inline-flex">
+            <WhatsAppIcon /> Chat now
+          </span>
+        </a>
+      )}
+
+      <section>
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="m-0 text-2xl font-bold tracking-tight">{heading}</h2>
+          {list.loaded && list.items.length > 0 && (
+            <span className="whitespace-nowrap text-sm text-gray-500">
+              {list.items.length}
+              {list.hasMore ? '+' : ''} {list.items.length === 1 && !list.hasMore ? 'item' : 'items'}
+            </span>
           )}
         </div>
 
-        {browsing && (
-          <section className="hero">
-            <div>
-              <h1 className="hero-title">Electrical &amp; Nal Fitting for every job</h1>
-              <p className="hero-text">Switches, wires, MCBs, lights, pipes, taps and fittings. Tap <strong>Buy Now</strong> to order on WhatsApp.</p>
-            </div>
-          </section>
+        {categories.length > 0 && (
+          <nav
+            aria-label="Categories"
+            className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0"
+          >
+            <Pill active={!cat} onClick={() => update({ cat: '' })}>
+              All
+            </Pill>
+            {categories.map((c) => (
+              <Pill key={c.id} active={cat === c.id} onClick={() => update({ cat: c.id })}>
+                {c.name}
+              </Pill>
+            ))}
+          </nav>
         )}
 
-        {browsing && (
-          <section className="category-section">
-            <h2 className="section-title">Shop by Category</h2>
-            {catLoading && categories.length === 0 && <Spinner />}
-            <ErrorBox error={catError} onRetry={() => refresh(true)} />
-            <div className="category-grid">
-              {categories.map((c) => (
-                <button type="button" key={c.id} className="category-tile" onClick={() => update({ cat: c.id }, false)}>
-                  <span className="category-initial" aria-hidden="true">
-                    {c.name.charAt(0).toUpperCase()}
-                  </span>
-                  <span className="category-name">{c.name}</span>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
+        <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {list.items.map((p) => (
+            <ProductCard key={p.id} product={p} />
+          ))}
+        </div>
 
-        <section>
-          <div className="section-head">
-            <h2 className="section-title">{heading}</h2>
-            {list.loaded && list.items.length > 0 && (
-              <span className="muted section-count">
-                {list.items.length}
-                {list.hasMore ? '+' : ''} {list.items.length === 1 && !list.hasMore ? 'item' : 'items'}
-              </span>
+        {list.loading && <Spinner />}
+        <ErrorBox error={list.error} onRetry={list.retry} />
+
+        {list.loaded && !list.loading && list.items.length === 0 && !list.hasMore && (
+          <div className="py-12 text-center text-gray-500">
+            <p>No products found.</p>
+            {!browsing && (
+              <button
+                type="button"
+                className="mt-2 cursor-pointer rounded-lg border border-gray-300 bg-white px-5 py-2.5 font-semibold text-ink hover:border-ink"
+                onClick={() => setParams({}, { replace: true })}
+              >
+                Show all products
+              </button>
             )}
           </div>
-          <div className="product-grid">
-            {list.items.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
+        )}
 
-          {list.loading && <Spinner />}
-          <ErrorBox error={list.error} onRetry={list.retry} />
-
-          {list.loaded && !list.loading && list.items.length === 0 && !list.hasMore && (
-            <div className="empty">
-              <p>No products found.</p>
-              {!browsing && (
-                <button type="button" className="btn btn-secondary" onClick={() => setParams({}, { replace: true })}>
-                  Show all products
-                </button>
-              )}
-            </div>
-          )}
-
-          {list.loaded && list.hasMore && !list.loading && !list.error && (
-            <button type="button" className="btn btn-primary btn-block load-more" onClick={list.loadMore}>
-              Load More
+        {list.loaded && list.hasMore && !list.loading && !list.error && (
+          <div className="mt-10 text-center">
+            <button
+              type="button"
+              className="cursor-pointer rounded-lg border border-ink bg-white px-8 py-3 font-semibold text-ink hover:bg-ink hover:text-white"
+              onClick={list.loadMore}
+            >
+              Load more
             </button>
-          )}
-        </section>
-      </div>
-    </div>
+          </div>
+        )}
+      </section>
+    </>
   );
 }

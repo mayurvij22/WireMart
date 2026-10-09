@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 
+const DEFAULT_CLASSES = { form: 'search', icon: 'search-icon', input: '', clear: 'search-clear' };
+
 /** Search box that reports changes after the user pauses typing (saves Firestore reads). */
-export default function SearchBar({ value, onChange, placeholder = 'Search products…', delay = 500 }) {
+export default function SearchBar({ value, onChange, placeholder = 'Search products…', delay = 500, classes = DEFAULT_CLASSES }) {
   const [text, setText] = useState(value);
   const inputRef = useRef(null);
 
@@ -16,7 +18,7 @@ export default function SearchBar({ value, onChange, placeholder = 'Search produ
 
   return (
     <form
-      className="search"
+      className={classes.form}
       role="search"
       onSubmit={(e) => {
         e.preventDefault();
@@ -24,9 +26,10 @@ export default function SearchBar({ value, onChange, placeholder = 'Search produ
         inputRef.current?.blur();
       }}
     >
-      <span className="search-icon" aria-hidden="true">🔍</span>
+      <span className={classes.icon} aria-hidden="true">🔍</span>
       <input
         ref={inputRef}
+        className={classes.input}
         type="search"
         inputMode="search"
         enterKeyHint="search"
@@ -38,7 +41,7 @@ export default function SearchBar({ value, onChange, placeholder = 'Search produ
       {text && (
         <button
           type="button"
-          className="search-clear"
+          className={classes.clear}
           aria-label="Clear search"
           onClick={() => {
             setText('');

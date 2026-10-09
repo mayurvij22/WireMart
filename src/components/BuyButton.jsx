@@ -12,7 +12,9 @@ export function WhatsAppIcon() {
 export default function BuyButton({ product, className = '' }) {
   return (
     <a
-      className={`btn btn-buy ${product.inStock ? '' : 'btn-enquire'} ${className}`}
+      className={`inline-flex w-full items-center justify-center gap-2 rounded-lg font-semibold no-underline transition active:scale-[0.98] ${
+        product.inStock ? 'bg-buy text-white hover:bg-buy-dark' : 'border border-buy bg-white text-buy hover:bg-emerald-50'
+      } ${className}`}
       href={whatsappLink(product)}
       target="_blank"
       rel="noopener noreferrer"

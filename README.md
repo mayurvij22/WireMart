@@ -1,4 +1,4 @@
-# WireMart: Yogesh Patil – Electrical & Nal Fitting
+# WireMart: Yogeshwar Patil – Electrical & Nal Fitting
 
 A mobile-first product catalog. Customers browse and order on WhatsApp; Yogesh manages products from `/admin`.
 
@@ -144,8 +144,8 @@ Why this way: Firebase Storage needs the paid Blaze plan, so photos live in Fire
 ## Customising
 - **WhatsApp number, shop name, page size, cache time:** `src/config.js`
 - **WhatsApp messages (Marathi):** `ORDER_MESSAGE` and `ENQUIRY_MESSAGE` in `src/config.js`. `{name}` and `{price}` are filled in automatically.
-  - In stock (**Buy Now**): `नमस्कार योगेश, मला हे खरेदी करायचे आहे: <Product> - किंमत: ₹<Price>`
-  - Out of stock (**Ask on WhatsApp**): `नमस्कार योगेश, हे उपलब्ध आहे का: <Product> - किंमत: ₹<Price>?`
+  - In stock (**Buy Now**): `नमस्कार योगेश्वर, मला हे खरेदी करायचे आहे: <Product> - किंमत: ₹<Price>`
+  - Out of stock (**Ask on WhatsApp**): `नमस्कार योगेश्वर, हे उपलब्ध आहे का: <Product> - किंमत: ₹<Price>?`
 
 ## Notes
 - The Firebase web API key isn't a secret; it ships in every Firebase web app. Security comes from `firestore.rules`. You can also limit the key to your domains in Google Cloud Console → APIs & Services → Credentials, under HTTP referrers.
