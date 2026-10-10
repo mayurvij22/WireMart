@@ -43,10 +43,15 @@ export const CSV_COLUMNS = ['name', 'price', 'category', 'features', 'imageUrl',
 
 export const CSV_TEMPLATE =
   'name,price,category,features,imageUrl,description,inStock\n' +
-  '"Anchor Roma 6A Switch",45,Switches,"6 Amp|White|ISI marked",https://example.com/switch.jpg,"Modular one-way switch",yes\n' +
+  '"Anchor Roma 6A Switch",45,Switches,"6 Amp|White|ISI marked","https://example.com/switch.jpg|https://example.com/switch-side.jpg","Modular one-way switch",yes\n' +
   '"Havells 1.5 sq mm Wire (90 m)",1450,Wires & Cables,"FR PVC|90 metre coil|Red",,"House wiring cable",yes\n';
 
 const NO = new Set(['no', 'n', 'false', '0', 'out', 'out of stock']);
+
+function splitPhotos(cell) {
+  const [imageUrl = '', ...moreImages] = cell.split('|').map((u) => u.trim()).filter(Boolean).slice(0, 5);
+  return { imageUrl, moreImages };
+}
 
 /** Converts CSV text into product rows plus a list of per-line problems. */
 export function csvToProducts(text) {
@@ -76,7 +81,8 @@ export function csvToProducts(text) {
       price,
       categoryName: categoryName.slice(0, 80),
       features: get(r, 'features').split('|').map((f) => f.trim()).filter(Boolean).slice(0, 50),
-      imageUrl: get(r, 'imageUrl'),
+      // Up to 5 photo links separated by | — the first is the main photo.
+      ...splitPhotos(get(r, 'imageUrl')),
       description: get(r, 'description').slice(0, 5000),
       inStock: !NO.has(get(r, 'inStock').toLowerCase()),
     });

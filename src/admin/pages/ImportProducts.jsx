@@ -47,7 +47,8 @@ export default function ImportProducts() {
       <h1>Import Products (CSV)</h1>
       <p className="muted">
         Make a sheet in Excel or Google Sheets with columns <code>name, price, category, features, imageUrl,
-        description, inStock</code>, then save it as CSV. Separate features with <code>|</code>. Missing categories
+        description, inStock</code>, then save it as CSV. Separate features with <code>|</code>. For more
+        than one photo, put up to 5 image links in <code>imageUrl</code> separated by <code>|</code> (the first is the main photo). Missing categories
         are created automatically.
       </p>
       <a href={templateHref} download="products-template.csv" className="btn btn-secondary btn-block">

@@ -1,13 +1,30 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { getProduct } from '../../lib/catalog';
+import { getMorePhotos, getProduct, getRelatedProducts, variantLabel } from '../../lib/catalog';
 import { formatPrice } from '../../lib/format';
 import { useCategories } from '../../hooks/useCategories';
 import AddToCart from '../../components/AddToCart';
 import BuyButton from '../../components/BuyButton';
-import ProductImage from '../../components/ProductImage';
+import PhotoGallery from '../../components/PhotoGallery';
+import ProductCard from '../../components/ProductCard';
 import StockBadge from '../../components/StockBadge';
 import { ErrorBox, Spinner } from '../../components/Status';
+
+function RelatedRow({ title, products, label }) {
+  if (!products.length) return null;
+  return (
+    <section className="mt-12">
+      <h2 className="m-0 text-xl font-bold tracking-tight">{title}</h2>
+      <div className="-mx-4 mt-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 [scrollbar-width:thin] sm:mx-0 sm:px-0">
+        {products.map((p) => (
+          <div key={p.id} className="w-40 flex-none snap-start sm:w-48">
+            <ProductCard product={p} tag={label?.(p)} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -15,13 +32,24 @@ export default function ProductDetail() {
   const { byId } = useCategories();
   const [product, setProduct] = useState(undefined);
   const [error, setError] = useState(null);
+  const [morePhotos, setMorePhotos] = useState([]);
+  const [related, setRelated] = useState({ variants: [], similar: [] });
 
   useEffect(() => {
     let alive = true;
     setProduct(undefined);
     setError(null);
+    setMorePhotos([]);
+    setRelated({ variants: [], similar: [] });
     getProduct(id)
-      .then((p) => alive && setProduct(p))
+      .then((p) => {
+        if (!alive) return;
+        setProduct(p);
+        if (!p) return;
+        // Extras load after the page shows; a failure just leaves them out.
+        getMorePhotos(p).then((list) => alive && setMorePhotos(list), () => {});
+        getRelatedProducts(p).then((r) => alive && setRelated(r), () => {});
+      })
       .catch((e) => alive && setError(e));
     return () => {
       alive = false;
@@ -63,12 +91,8 @@ export default function ProductDetail() {
       </nav>
 
       <div className="grid items-start gap-8 lg:grid-cols-2 lg:gap-14">
-        <div className="overflow-hidden rounded-2xl bg-gray-50 lg:sticky lg:top-28">
-          <ProductImage
-            src={product.imageUrl}
-            alt={product.name}
-            className="aspect-square max-h-[560px] w-full object-contain p-6 text-6xl"
-          />
+        <div className="min-w-0 lg:sticky lg:top-28">
+          <PhotoGallery photos={[product.imageUrl, ...morePhotos].filter(Boolean)} alt={product.name} />
         </div>
 
         <div className="flex flex-col">
@@ -121,6 +145,9 @@ export default function ProductDetail() {
           </p>
         </div>
       </div>
+
+      <RelatedRow title="Other sizes & colours" products={related.variants} label={(p) => variantLabel(product, p)} />
+      <RelatedRow title={category ? `More in ${category.name}` : 'Similar items'} products={related.similar} />
     </article>
   );
 }

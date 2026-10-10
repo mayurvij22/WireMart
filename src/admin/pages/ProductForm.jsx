@@ -1,18 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useCategories } from '../../hooks/useCategories';
-import { getProduct, saveProduct } from '../../lib/catalog';
+import { getMorePhotos, getProduct, MAX_PHOTOS, saveProduct } from '../../lib/catalog';
 import { friendlyError, normalizeImageUrl } from '../../lib/format';
 import ProductImage from '../../components/ProductImage';
 import { Spinner } from '../../components/Status';
-import { isEmbeddedPhoto, photoToDataUrl } from '../photo';
+import { photoToDataUrl } from '../photo';
 
 const blank = (category = '') => ({
   name: '',
   price: '',
   category,
   features: [''],
-  imageUrl: '',
+  photos: [], // first one is the main photo
   description: '',
   inStock: true,
 });
@@ -27,23 +27,43 @@ export default function ProductForm() {
   const [saving, setSaving] = useState(false);
   const [savedName, setSavedName] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [photoLink, setPhotoLink] = useState('');
 
-  async function onPhoto(e) {
+  async function onPhotos(e) {
     const input = e.target;
-    const file = input.files?.[0];
-    if (!file) return;
+    const room = MAX_PHOTOS - form.photos.length;
+    const files = [...(input.files || [])];
+    if (!files.length) return;
     setUploading(true);
     setError('');
+    const problems = [];
     try {
-      const url = await photoToDataUrl(file);
-      setForm((f) => ({ ...f, imageUrl: url }));
-    } catch (err) {
-      setError(`Could not use this photo: ${err.message}`);
+      for (const file of files.slice(0, room)) {
+        try {
+          const url = await photoToDataUrl(file);
+          setForm((f) => ({ ...f, photos: [...f.photos, url].slice(0, MAX_PHOTOS) }));
+        } catch (err) {
+          problems.push(`${file.name}: ${err.message}`);
+        }
+      }
+      if (files.length > room) problems.push(`Only ${MAX_PHOTOS} photos per product — ${files.length - room} not added.`);
+      if (problems.length) setError(`Some photos were not added. ${problems.join(' ')}`);
     } finally {
       setUploading(false);
       input.value = '';
     }
   }
+
+  function addPhotoLink() {
+    const url = normalizeImageUrl(photoLink);
+    if (!/^https?:\/\//.test(url)) return setError('Please paste a full image link starting with https://');
+    setError('');
+    setForm((f) => ({ ...f, photos: [...f.photos, url].slice(0, MAX_PHOTOS) }));
+    setPhotoLink('');
+  }
+
+  const removePhoto = (i) => setForm((f) => ({ ...f, photos: f.photos.filter((_, j) => j !== i) }));
+  const makeMain = (i) => setForm((f) => ({ ...f, photos: [f.photos[i], ...f.photos.filter((_, j) => j !== i)] }));
 
   useEffect(() => {
     if (!id) {
@@ -52,9 +72,10 @@ export default function ProductForm() {
     }
     setForm(null);
     getProduct(id)
-      .then((p) => {
+      .then(async (p) => {
         if (!p) return setLoadError('Product not found.');
-        setForm({ ...p, price: String(p.price), features: p.features.length ? p.features : [''] });
+        const photos = [p.imageUrl, ...(await getMorePhotos(p))].filter(Boolean);
+        setForm({ ...p, photos, price: String(p.price), features: p.features.length ? p.features : [''] });
       })
       .catch((e) => setLoadError(friendlyError(e)));
   }, [id]);
@@ -78,7 +99,8 @@ export default function ProductForm() {
 
     setSaving(true);
     try {
-      await saveProduct(id, form);
+      const [imageUrl = '', ...moreImages] = form.photos;
+      await saveProduct(id, { ...form, imageUrl, moreImages });
       if (addAnother) {
         setSavedName(form.name.trim());
         setForm(blank(form.category));
@@ -167,40 +189,76 @@ export default function ProductForm() {
       <aside className="form-side">
         <div className="panel">
           <div className="field">
-            <span>Photo</span>
-            {form.imageUrl && (
-              <ProductImage
-                key={form.imageUrl}
-                src={normalizeImageUrl(form.imageUrl)}
-                alt="Preview"
-                className="image-preview"
-              />
+            <span>
+              Photos ({form.photos.length}/{MAX_PHOTOS})
+            </span>
+            {form.photos.length > 0 && (
+              <ul className="m-0 mb-2 grid list-none grid-cols-3 gap-2 p-0">
+                {form.photos.map((url, i) => (
+                  <li key={`${i}-${url.slice(-24)}`} className="relative">
+                    <ProductImage
+                      src={normalizeImageUrl(url)}
+                      alt={`Photo ${i + 1}`}
+                      className={`aspect-square w-full rounded-lg border bg-white object-contain ${
+                        i === 0 ? 'border-2 border-emerald-600' : 'border-gray-200'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      aria-label={`Remove photo ${i + 1}`}
+                      onClick={() => removePhoto(i)}
+                      className="absolute top-1 right-1 grid size-7 cursor-pointer place-items-center rounded-full border-0 bg-black/60 text-xs text-white"
+                    >
+                      ✕
+                    </button>
+                    {i === 0 ? (
+                      <span className="absolute bottom-1 left-1 rounded bg-emerald-600 px-1.5 py-0.5 text-[11px] font-semibold text-white">
+                        Main
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => makeMain(i)}
+                        className="absolute bottom-1 left-1 cursor-pointer rounded border-0 bg-white/90 px-1.5 py-0.5 text-[11px] font-semibold text-gray-800 shadow"
+                      >
+                        Make main
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
             )}
-            <label className={`btn btn-secondary btn-block btn-large file-btn ${uploading ? 'disabled' : ''}`}>
-              {uploading ? 'Preparing photo…' : form.imageUrl ? '📷 Change Photo' : '📷 Add Photo'}
-              <input type="file" accept="image/*" hidden disabled={uploading} onChange={onPhoto} />
-            </label>
-            {form.imageUrl && (
-              <button
-                type="button"
-                className="btn btn-ghost btn-block"
-                onClick={() => setForm({ ...form, imageUrl: '' })}
-              >
-                Remove photo
-              </button>
+            {form.photos.length < MAX_PHOTOS && (
+              <label className={`btn btn-secondary btn-block btn-large file-btn ${uploading ? 'disabled' : ''}`}>
+                {uploading ? 'Preparing photos…' : form.photos.length ? '📷 Add More Photos' : '📷 Add Photos'}
+                <input type="file" accept="image/*" multiple hidden disabled={uploading} onChange={onPhotos} />
+              </label>
             )}
+            <span className="muted text-xs">Up to {MAX_PHOTOS} photos. The first one is shown in the product list.</span>
           </div>
-          {!isEmbeddedPhoto(form.imageUrl) && (
-            <label className="field">
+          {form.photos.length < MAX_PHOTOS && (
+            <div className="field">
               <span className="muted">Or paste an image link</span>
-              <input
-                type="url"
-                inputMode="url"
-                value={form.imageUrl}
-                onChange={set('imageUrl')}
-                placeholder="https://…"
-              />
-            </label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  inputMode="url"
+                  value={photoLink}
+                  onChange={(e) => setPhotoLink(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addPhotoLink();
+                    }
+                  }}
+                  placeholder="https://…"
+                  className="min-w-0 flex-1"
+                />
+                <button type="button" className="btn btn-secondary" disabled={!photoLink.trim()} onClick={addPhotoLink}>
+                  Add
+                </button>
+              </div>
+            </div>
           )}
         </div>
 

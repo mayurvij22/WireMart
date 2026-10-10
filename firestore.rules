@@ -15,7 +15,7 @@ service cloud.firestore {
     function isValidProduct() {
       let d = request.resource.data;
       return d.keys().hasOnly(['name', 'nameLower', 'keywords', 'price', 'category',
-                               'features', 'imageUrl', 'description', 'inStock',
+                               'features', 'imageUrl', 'morePhotos', 'description', 'inStock',
                                'createdAt', 'updatedAt'])
         && d.name is string && d.name.size() > 0 && d.name.size() <= 200
         && d.nameLower is string
@@ -25,7 +25,15 @@ service cloud.firestore {
         && d.features is list && d.features.size() <= 50
         && d.imageUrl is string && d.imageUrl.size() <= 250000
         && d.description is string && d.description.size() <= 5000
-        && d.inStock is bool;
+        && d.inStock is bool
+        && (!('morePhotos' in d) || (d.morePhotos is int && d.morePhotos >= 0 && d.morePhotos <= 4));
+    }
+
+    // Up to 4 extra photos per product (the main photo is the product's imageUrl).
+    function isValidPhotos() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['images'])
+        && d.images is list && d.images.size() <= 4;
     }
 
     function isValidCategory() {
@@ -37,6 +45,12 @@ service cloud.firestore {
     match /products/{productId} {
       allow read: if true;
       allow create, update: if isAdmin() && isValidProduct();
+      allow delete: if isAdmin();
+    }
+
+    match /productPhotos/{productId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidPhotos();
       allow delete: if isAdmin();
     }
 

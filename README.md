@@ -34,12 +34,18 @@ A mobile-first product catalog. Customers browse and order on WhatsApp; Yogesh m
 
 | Collection | Fields |
 |---|---|
-| `products` | `name`, `nameLower`, `keywords` (array of word prefixes, for search), `price` (number), `category` (category **document id**), `features` (array), `imageUrl`, `description`, `inStock` (bool), `createdAt`, `updatedAt` |
+| `products` | `name`, `nameLower`, `keywords` (array of word prefixes, for search), `price` (number), `category` (category **document id**), `features` (array), `imageUrl` (main photo), `morePhotos` (number of extra photos, 0–4), `description`, `inStock` (bool), `createdAt`, `updatedAt` |
+| `productPhotos` | Document id = product id. `images` (up to 4 extra photos). Read only when a product page opens, so product lists stay light. |
 | `categories` | `name` |
 
 Two details about how the data is stored:
 - **The `category` field holds the category's document id, not its name.** Renaming a category is then a single write, instead of rewriting every product in that category.
 - **Search uses the `keywords` field.** It holds every prefix of every word in the name, the category name and the feature values (series, code, rating…), plus singular forms and joined forms. So "switch", "switches", "swi", "6a", "6 a", "1way", "woodem", "plana" or a product code like "w90001" all find the right product. `nameLower` is used for A–Z sorting. The admin form and the CSV import fill in both fields automatically. After renaming a category (or once, for products saved before this was added) use **Admin → Categories → Update search for all products**.
+
+## Photos and related items
+Each product can have up to **5 photos** (Admin → product → Add Photos; pick several at once, tap **Make main** to choose the list photo). The product page shows them as a swipeable gallery. In CSV import, put up to 5 links in `imageUrl` separated by `|`.
+
+The product page also shows **Other sizes & colours** (same category and same `Model:`/`Series:` feature, or the same model word in the name), each labelled with what differs, e.g. "1200mm · Matt White", followed by more items from the same category. This costs up to ~20 reads the first time a product is opened in a visit.
 
 ## Cart and bill
 Customers can add several products to a cart (stored on their phone), change quantities, and see a bill with line totals and the grand total. **Order on WhatsApp** sends the itemised bill in one message (text set by `CART_ORDER_MESSAGE` in `src/config.js`). The cart costs no Firestore reads.
