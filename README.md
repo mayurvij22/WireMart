@@ -39,7 +39,10 @@ A mobile-first product catalog. Customers browse and order on WhatsApp; Yogesh m
 
 Two details about how the data is stored:
 - **The `category` field holds the category's document id, not its name.** Renaming a category is then a single write, instead of rewriting every product in that category.
-- **Search uses the `keywords` field.** It holds every prefix of every word in the name, so "switch", "swi" or "6a" all find *Anchor Roma 6A Switch*. `nameLower` is used for A–Z sorting. The admin form and the CSV import fill in both fields automatically.
+- **Search uses the `keywords` field.** It holds every prefix of every word in the name, the category name and the feature values (series, code, rating…), plus singular forms and joined forms. So "switch", "switches", "swi", "6a", "6 a", "1way", "woodem", "plana" or a product code like "w90001" all find the right product. `nameLower` is used for A–Z sorting. The admin form and the CSV import fill in both fields automatically. After renaming a category (or once, for products saved before this was added) use **Admin → Categories → Update search for all products**.
+
+## Cart and bill
+Customers can add several products to a cart (stored on their phone), change quantities, and see a bill with line totals and the grand total. **Order on WhatsApp** sends the itemised bill in one message (text set by `CART_ORDER_MESSAGE` in `src/config.js`). The cart costs no Firestore reads.
 
 ### How reads are kept low (free limit is 50,000 reads/day)
 - Products load **20 at a time** with `limit()` + `startAfter()`, and only when "Load More" is tapped.

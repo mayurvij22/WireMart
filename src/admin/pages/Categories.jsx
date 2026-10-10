@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useCategories } from '../../hooks/useCategories';
-import { addCategory, renameCategory } from '../../lib/catalog';
+import { addCategory, reindexProducts, renameCategory } from '../../lib/catalog';
 import { friendlyError } from '../../lib/format';
 import { ErrorBox, Spinner } from '../../components/Status';
 
@@ -11,6 +11,7 @@ export default function Categories() {
   const [editName, setEditName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [reindex, setReindex] = useState('');
 
   const exists = (name, exceptId) =>
     categories.some((c) => c.id !== exceptId && c.name.toLowerCase() === name.trim().toLowerCase());
@@ -45,6 +46,15 @@ export default function Categories() {
     run(async () => {
       setCategories(await renameCategory(editingId, editName));
       setEditingId(null);
+    });
+  }
+
+  function runReindex() {
+    if (!window.confirm('Update search for all products? This uses 1 read + 1 write per product.')) return;
+    run(async () => {
+      setReindex('Starting…');
+      const count = await reindexProducts((done, total) => setReindex(`Updated ${done} of ${total}…`));
+      setReindex(`Search updated for ${count} products.`);
     });
   }
 
@@ -105,6 +115,18 @@ export default function Categories() {
           ↻ Refresh list
         </button>
       )}
+
+      <section className="mt-8 border-t border-gray-200 pt-4">
+        <h2>Search</h2>
+        <p className="muted">
+          Customers can search by product name, category and features (series, code, rating). After renaming a
+          category, or once for products added before this update, tap below so search picks up the changes.
+        </p>
+        <button type="button" className="btn btn-secondary btn-block" disabled={busy} onClick={runReindex}>
+          🔍 Update search for all products
+        </button>
+        {reindex && <p className="muted" role="status">{reindex}</p>}
+      </section>
     </div>
   );
 }

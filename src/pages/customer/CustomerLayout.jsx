@@ -3,6 +3,8 @@ import { INSTAGRAM_ACCOUNTS, SHOP_NAME, WHATSAPP_DISPLAY, WHATSAPP_NUMBER } from
 import { WhatsAppIcon } from '../../components/BuyButton';
 import SearchBar from '../../components/SearchBar';
 import { useCategories } from '../../hooks/useCategories';
+import { CartProvider, useCart } from '../../hooks/useCart';
+import { formatPrice } from '../../lib/format';
 
 const chatLink = `https://wa.me/${WHATSAPP_NUMBER}`;
 const callLink = `tel:+${WHATSAPP_NUMBER}`;
@@ -26,6 +28,57 @@ function Logo() {
         <span className="truncate text-xs font-medium text-gray-500">Electrical &amp; Nal Fitting</span>
       </span>
     </Link>
+  );
+}
+
+function CartIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="9" cy="20" r="1.5" />
+      <circle cx="18" cy="20" r="1.5" />
+      <path d="M2 3h3l2.7 12.4a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.5L21 8H6.2" />
+    </svg>
+  );
+}
+
+function CartLink() {
+  const { count } = useCart();
+  return (
+    <Link
+      to="/cart"
+      aria-label={`Cart, ${count} ${count === 1 ? 'item' : 'items'}`}
+      className="relative grid size-10 place-items-center rounded-lg text-ink no-underline hover:bg-gray-100"
+    >
+      <CartIcon />
+      {count > 0 && (
+        <span className="absolute -top-0.5 -right-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1 text-[11px] font-bold text-white">
+          {count > 99 ? '99+' : count}
+        </span>
+      )}
+    </Link>
+  );
+}
+
+/** Running bill shown at the bottom of list pages while the cart has items. */
+function CartBar() {
+  const { count, total } = useCart();
+  const { pathname } = useLocation();
+  if (count === 0 || pathname !== '/') return null;
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(12px,env(safe-area-inset-bottom))]">
+      <Link
+        to="/cart"
+        className="pointer-events-auto mx-auto flex max-w-xl items-center justify-between gap-4 rounded-xl bg-accent px-5 py-3 text-white no-underline shadow-lg"
+      >
+        <span className="flex flex-col leading-tight">
+          <span className="text-xs font-medium text-white/80">
+            {count} {count === 1 ? 'item' : 'items'}
+          </span>
+          <span className="text-lg font-bold">{formatPrice(total)}</span>
+        </span>
+        <span className="font-semibold">View cart & bill →</span>
+      </Link>
+    </div>
   );
 }
 
@@ -53,6 +106,7 @@ function Header() {
         <Logo />
         <div className="ml-auto hidden w-full max-w-md md:block">{searchBox}</div>
         <nav className="ml-auto flex flex-none items-center gap-2 md:ml-0">
+          <CartLink />
           <a
             href={callLink}
             className="hidden items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-ink no-underline hover:bg-gray-100 lg:inline-flex"
@@ -180,12 +234,15 @@ function Footer() {
 
 export default function CustomerLayout() {
   return (
-    <div className="flex min-h-screen flex-col bg-white font-sans text-ink">
-      <Header />
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 pt-6 sm:px-6 lg:px-8">
-        <Outlet />
-      </main>
-      <Footer />
-    </div>
+    <CartProvider>
+      <div className="flex min-h-screen flex-col bg-white font-sans text-ink">
+        <Header />
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 pt-6 sm:px-6 lg:px-8">
+          <Outlet />
+        </main>
+        <Footer />
+        <CartBar />
+      </div>
+    </CartProvider>
   );
 }

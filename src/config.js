@@ -5,6 +5,8 @@ export const SHOP_NAME = 'Yogeshwar Patil – Electrical & Nal Fitting';
 // "Ask on WhatsApp" (out of stock). {name} and {price} are filled in automatically.
 export const ORDER_MESSAGE = 'नमस्कार योगेश्वर, मला हे खरेदी करायचे आहे: {name} - किंमत: {price}';
 export const ENQUIRY_MESSAGE = 'नमस्कार योगेश्वर, हे उपलब्ध आहे का: {name} - किंमत: {price}?';
+// Sent from the cart. {items} is the itemised bill (one line per product), {total} the grand total.
+export const CART_ORDER_MESSAGE = 'नमस्कार योगेश्वर, मला खालील वस्तू खरेदी करायच्या आहेत:\n\n{items}\n\nएकूण (Total): {total}';
 
 // International format without "+" or spaces, as wa.me expects.
 export const WHATSAPP_NUMBER = '918208104775';

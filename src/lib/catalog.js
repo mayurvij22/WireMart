@@ -16,7 +16,7 @@ import {
 } from 'firebase/firestore/lite';
 import { db } from '../firebase';
 import { CATEGORY_CACHE_HOURS, PAGE_SIZE } from '../config';
-import { buildKeywords, normalizeImageUrl, tokenize } from './format';
+import { buildKeywords, normalizeImageUrl, searchTerms } from './format';
 
 /* ------------------------------------------------------------------ */
 /* Categories: read once, then served from memory + localStorage.      */
@@ -88,7 +88,7 @@ export async function renameCategory(id, name) {
 export const listCache = new Map();
 
 export function listKey(categoryId, search) {
-  return `${categoryId || ''}|${tokenize(search).join(' ')}`;
+  return `${categoryId || ''}|${searchTerms(search).join(' ')}`;
 }
 
 export function clearListCache() {
@@ -133,13 +133,14 @@ function toProduct(snap) {
  * `keywords`) and checks any other words on the phone.
  */
 export async function fetchProductsPage({ categoryId, search, cursor }) {
-  const tokens = tokenize(search);
-  const main = tokens.reduce((a, b) => (b.length > a.length ? b : a), '');
+  const terms = searchTerms(search);
+  const main = terms.reduce((a, b) => (b.length > a.length ? b : a), '');
+  const rest = terms.filter((t) => t !== main);
 
   const items = [];
   let hasMore = true;
-  // Multi-word searches can filter out a whole page; try a few pages before giving up.
-  for (let attempt = 0; attempt < 3 && hasMore && items.length === 0; attempt++) {
+  // Multi-word searches filter on the phone, so keep reading until a page is full (max 5 reads of PAGE_SIZE).
+  for (let attempt = 0; attempt < 5 && hasMore && items.length < PAGE_SIZE; attempt++) {
     const constraints = [];
     if (categoryId) constraints.push(where('category', '==', categoryId));
     if (main) constraints.push(where('keywords', 'array-contains', main));
@@ -149,10 +150,10 @@ export async function fetchProductsPage({ categoryId, search, cursor }) {
 
     const snap = await getDocs(query(collection(db, 'products'), ...constraints));
     const page = snap.docs.map(toProduct);
-    items.push(...(tokens.length > 1 ? page.filter((p) => tokens.every((t) => p.keywords.includes(t))) : page));
+    items.push(...(rest.length ? page.filter((p) => rest.every((t) => p.keywords.includes(t))) : page));
     hasMore = snap.docs.length === PAGE_SIZE;
     if (snap.docs.length) cursor = snap.docs[snap.docs.length - 1];
-    if (tokens.length <= 1) break;
+    if (!rest.length) break;
   }
   return { items, cursor, hasMore };
 }
@@ -168,15 +169,16 @@ export async function getProduct(id) {
 /* Admin writes                                                        */
 /* ------------------------------------------------------------------ */
 
-function productData(input) {
+function productData(input, categoryName = '') {
   const name = input.name.trim();
+  const features = (input.features || []).map((f) => f.trim()).filter(Boolean);
   return {
     name,
     nameLower: name.toLowerCase(),
-    keywords: buildKeywords(name),
+    keywords: buildKeywords(name, [categoryName, ...features]),
     price: Number(input.price),
     category: input.category,
-    features: (input.features || []).map((f) => f.trim()).filter(Boolean),
+    features,
     imageUrl: normalizeImageUrl(input.imageUrl),
     description: (input.description || '').trim(),
     inStock: Boolean(input.inStock),
@@ -184,8 +186,12 @@ function productData(input) {
   };
 }
 
+async function lookupCategoryName(id) {
+  return (await getCategories()).find((c) => c.id === id)?.name || '';
+}
+
 export async function saveProduct(id, input) {
-  const data = productData(input);
+  const data = productData(input, await lookupCategoryName(input.category));
   if (id) {
     await updateDoc(doc(db, 'products', id), data);
   } else {
@@ -227,12 +233,37 @@ export async function importProducts(rows, onProgress = () => {}) {
   for (let i = 0; i < rows.length; i += BATCH) {
     const batch = writeBatch(db);
     for (const row of rows.slice(i, i + BATCH)) {
-      const data = productData({ ...row, category: idByName.get(row.categoryName.toLowerCase()) });
+      const data = productData({ ...row, category: idByName.get(row.categoryName.toLowerCase()) }, row.categoryName);
       batch.set(doc(collection(db, 'products')), { ...data, createdAt: serverTimestamp() });
     }
     await batch.commit();
     done = Math.min(i + BATCH, rows.length);
     onProgress(done);
+  }
+  clearListCache();
+  return done;
+}
+
+/**
+ * Rebuilds the search keywords of every product (after a category rename, or for
+ * products saved before category/feature search existed). Costs 1 read + 1 write per product.
+ */
+export async function reindexProducts(onProgress = () => {}) {
+  const categories = await getCategories({ force: true });
+  const nameById = new Map(categories.map((c) => [c.id, c.name]));
+  const snap = await getDocs(collection(db, 'products'));
+
+  const BATCH = 400;
+  let done = 0;
+  for (let i = 0; i < snap.docs.length; i += BATCH) {
+    const batch = writeBatch(db);
+    for (const d of snap.docs.slice(i, i + BATCH)) {
+      const p = toProduct(d);
+      batch.update(d.ref, { keywords: buildKeywords(p.name, [nameById.get(p.category) || '', ...p.features]) });
+    }
+    await batch.commit();
+    done = Math.min(i + BATCH, snap.docs.length);
+    onProgress(done, snap.docs.length);
   }
   clearListCache();
   return done;

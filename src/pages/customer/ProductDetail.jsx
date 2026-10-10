@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getProduct } from '../../lib/catalog';
 import { formatPrice } from '../../lib/format';
 import { useCategories } from '../../hooks/useCategories';
+import AddToCart from '../../components/AddToCart';
 import BuyButton from '../../components/BuyButton';
 import ProductImage from '../../components/ProductImage';
 import StockBadge from '../../components/StockBadge';
@@ -79,7 +80,8 @@ export default function ProductDetail() {
 
           {/* Phones: fixed bar at the bottom. Computers: shown here beside the photo. */}
           <div className="fixed inset-x-0 bottom-0 z-20 flex items-center gap-4 border-t border-gray-200 bg-white px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] lg:static lg:mt-6 lg:border-0 lg:p-0">
-            <span className="text-xl font-bold whitespace-nowrap lg:hidden">{formatPrice(product.price)}</span>
+            {!product.inStock && <span className="text-xl font-bold whitespace-nowrap lg:hidden">{formatPrice(product.price)}</span>}
+            {product.inStock && <AddToCart product={product} className="h-12 flex-1 text-base lg:max-w-xs" />}
             <BuyButton product={product} className="h-12 flex-1 text-base lg:max-w-xs" />
           </div>
 
@@ -107,7 +109,15 @@ export default function ProductDetail() {
           )}
 
           <p className="mt-8 rounded-xl bg-accent-soft px-4 py-3 text-sm text-ink">
-            💬 Tap <strong>{product.inStock ? 'Buy Now' : 'Ask on WhatsApp'}</strong> — your order message is filled in for you.
+            💬 {product.inStock ? (
+              <>
+                Buying several items? <strong>Add to cart</strong>, then send the whole order with the bill total in one WhatsApp message.
+              </>
+            ) : (
+              <>
+                Tap <strong>Ask on WhatsApp</strong> — your message is filled in for you.
+              </>
+            )}
           </p>
         </div>
       </div>

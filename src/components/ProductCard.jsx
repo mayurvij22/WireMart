@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { formatPrice } from '../lib/format';
+import AddToCart from './AddToCart';
 import BuyButton from './BuyButton';
 import ProductImage from './ProductImage';
 import StockBadge from './StockBadge';
@@ -30,7 +31,11 @@ export default function ProductCard({ product }) {
           </ul>
         )}
       </Link>
-      <BuyButton product={product} className="mt-3 h-10 text-sm" />
+      {product.inStock ? (
+        <AddToCart product={product} className="mt-3 h-10 text-sm" />
+      ) : (
+        <BuyButton product={product} className="mt-3 h-10 text-sm" />
+      )}
     </article>
   );
 }

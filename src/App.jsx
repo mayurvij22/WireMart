@@ -6,6 +6,7 @@ import RouteError from './components/RouteError';
 import CustomerLayout from './pages/customer/CustomerLayout';
 import Home from './pages/customer/Home';
 import ProductDetail from './pages/customer/ProductDetail';
+import Cart from './pages/customer/Cart';
 import NotFound from './pages/customer/NotFound';
 
 // Admin code (incl. Firebase Auth) is a separate chunk customers never download.
@@ -49,6 +50,7 @@ const router = createBrowserRouter([
         children: [
           { path: '/', element: <Home /> },
           { path: '/product/:id', element: <ProductDetail /> },
+          { path: '/cart', element: <Cart /> },
           { path: '*', element: <NotFound /> },
         ],
       },

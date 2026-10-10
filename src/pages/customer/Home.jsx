@@ -1,6 +1,9 @@
+import { useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useCategories } from '../../hooks/useCategories';
 import { useProductList } from '../../hooks/useProductList';
+import { useCart } from '../../hooks/useCart';
+import { searchTerms, stem, tokenize } from '../../lib/format';
 import ProductCard from '../../components/ProductCard';
 import { ErrorBox, Spinner } from '../../components/Status';
 import { WhatsAppIcon } from '../../components/BuyButton';
@@ -39,10 +42,27 @@ function CategoryTile({ category, onClick }) {
   );
 }
 
+// Categories whose name matches every typed word ("plate" → Modular Plates).
+function matchCategories(categories, q) {
+  const terms = searchTerms(q);
+  if (!terms.length) return [];
+  return categories.filter((c) => {
+    const words = tokenize(c.name).flatMap((w) => [w, stem(w)]);
+    return terms.every((t) => words.some((w) => w.startsWith(t)));
+  });
+}
+
 function Pill({ active, onClick, children }) {
+  const ref = useRef(null);
+  // Keep the chosen category visible in the sideways-scrolling row.
+  useEffect(() => {
+    if (active) ref.current?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  }, [active]);
   return (
     <button
+      ref={ref}
       type="button"
+      aria-pressed={active}
       onClick={onClick}
       className={`h-9 flex-none cursor-pointer whitespace-nowrap rounded-full border px-4 text-sm font-semibold transition ${
         active ? 'border-ink bg-ink text-white' : 'border-gray-300 bg-white text-ink hover:border-ink'
@@ -60,6 +80,9 @@ export default function Home() {
   const { categories, byId, loading: catLoading, error: catError, refresh } = useCategories();
   const list = useProductList({ categoryId: cat, search: q });
   const browsing = !cat && !q;
+  const { count: cartCount } = useCart();
+  const matchedCategories = useMemo(() => matchCategories(categories, q).filter((c) => c.id !== cat), [categories, q, cat]);
+  const words = searchTerms(q);
 
   function update(changes, replace = true) {
     const next = new URLSearchParams(params);
@@ -135,7 +158,7 @@ export default function Home() {
         </a>
       )}
 
-      <section>
+      <section className={cartCount > 0 ? 'pb-24' : ''}>
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="m-0 text-2xl font-bold tracking-tight">{heading}</h2>
           {list.loaded && list.items.length > 0 && (
@@ -145,6 +168,30 @@ export default function Home() {
             </span>
           )}
         </div>
+
+        {q && (matchedCategories.length > 0 || cat) && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+            {matchedCategories.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => update({ cat: c.id, q: '' }, false)}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border-0 bg-accent-soft px-3 py-1.5 font-semibold text-accent hover:underline"
+              >
+                <span aria-hidden="true">{categoryIcon(c.name) || '🗂️'}</span> See all {c.name} →
+              </button>
+            ))}
+            {cat && (
+              <button
+                type="button"
+                onClick={() => update({ cat: '' })}
+                className="cursor-pointer rounded-full border border-gray-300 bg-white px-3 py-1.5 font-semibold text-ink hover:border-ink"
+              >
+                Search “{q}” in all categories
+              </button>
+            )}
+          </div>
+        )}
 
         {categories.length > 0 && (
           <nav
@@ -173,7 +220,26 @@ export default function Home() {
 
         {list.loaded && !list.loading && list.items.length === 0 && !list.hasMore && (
           <div className="py-12 text-center text-gray-500">
-            <p>No products found.</p>
+            <p>No products found{q ? ` for “${q}”` : ''}{cat && byId[cat] ? ` in ${byId[cat].name}` : ''}.</p>
+            {q && words.length > 1 && (
+              <div className="mt-2 flex flex-wrap justify-center gap-2">
+                <span className="self-center text-sm">Try one word:</span>
+                {words.map((w) => (
+                  <Pill key={w} active={false} onClick={() => update({ q: w })}>
+                    {w}
+                  </Pill>
+                ))}
+              </div>
+            )}
+            {q && cat && (
+              <button
+                type="button"
+                className="mt-3 mr-2 cursor-pointer rounded-lg border border-gray-300 bg-white px-5 py-2.5 font-semibold text-ink hover:border-ink"
+                onClick={() => update({ cat: '' })}
+              >
+                Search all categories
+              </button>
+            )}
             {!browsing && (
               <button
                 type="button"
